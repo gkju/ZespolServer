@@ -11,6 +11,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ZespolLib;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace ZespolServer
 {
@@ -26,6 +29,10 @@ namespace ZespolServer
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            string appDbContextNpgsqlConnection = Configuration.GetConnectionString("Postgres");
+
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(appDbContextNpgsqlConnection, o => o.MigrationsAssembly("ZespolServer")));
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
