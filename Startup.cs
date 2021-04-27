@@ -32,7 +32,10 @@ namespace ZespolServer
             string appDbContextNpgsqlConnection = Configuration.GetConnectionString("Postgres");
 
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(appDbContextNpgsqlConnection, o => o.MigrationsAssembly("ZespolServer")));
+                options.UseNpgsql(appDbContextNpgsqlConnection, o =>
+                {
+                    o.MigrationsAssembly("ZespolServer");
+                }));
 
             services.AddControllers();
             services.AddSwaggerGen(c =>
