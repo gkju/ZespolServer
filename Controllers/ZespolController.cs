@@ -22,37 +22,32 @@ namespace ZespolServer.Controllers
         [HttpPost]
         public async Task<IActionResult> AddZespol(Zespol Zespol)
         {
-            List<Osoba> Osoby = new List<Osoba>(await dbContext.CzlonkowieZespolow.ToListAsync());
-            foreach (Osoba KierownikZespolu in await dbContext.KierownicyZespolow.ToListAsync())
+            Zespol.Id = Guid.NewGuid().ToString();
+            
+            if (dbContext.KierownicyZespolow.AsNoTracking()
+                .FirstOrDefault(kierownik => kierownik.PESEL == Zespol.Kierownik.PESEL) != default(KierownikZespolu))
             {
-                Osoby.Add(KierownikZespolu);
+                dbContext.KierownicyZespolow.Update(Zespol.Kierownik);
+            }
+            else
+            {
+                dbContext.KierownicyZespolow.Add(Zespol.Kierownik);
             }
 
-            List<Osoba> NoweOsoby = new List<Osoba> {Zespol.Kierownik};
-            foreach (var osoba in Zespol.Czlonkowie)
-            {
-                NoweOsoby.Add(osoba);
-            }
+            await dbContext.SaveChangesAsync();
 
-            foreach (var osoba in NoweOsoby)
+            foreach (var czlonek in Zespol.Czlonkowie)
             {
-                Osoba StaraOsoba = Osoby.FirstOrDefault(os => os.PESEL == osoba.PESEL);
-
-                if (StaraOsoba != default(Osoba))
+                if (dbContext.CzlonkowieZespolow.AsNoTracking().FirstOrDefault(czl => czl.PESEL == czlonek.PESEL) !=
+                    default(CzlonekZespolu))
                 {
-                    if (Zespol.Kierownik.PESEL == StaraOsoba.PESEL)
-                    {
-                        Zespol.Kierownik =
-                            await dbContext.KierownicyZespolow.FirstAsync(kierownik =>
-                                kierownik.PESEL == Zespol.Kierownik.PESEL);
-                    }
-                    else
-                    {
-                        int index = Zespol.Czlonkowie.FindIndex(os => os.PESEL == StaraOsoba.PESEL);
-                        Zespol.Czlonkowie[index] =
-                            await dbContext.CzlonkowieZespolow.FirstAsync(czlonek => czlonek.PESEL == StaraOsoba.PESEL);
-                    }
+                    dbContext.CzlonkowieZespolow.Update(czlonek);
                 }
+                else
+                {
+                    dbContext.CzlonkowieZespolow.Add(czlonek);
+                }
+                await dbContext.SaveChangesAsync();
             }
 
             ZespolCluster zespolCluster = await
@@ -63,8 +58,11 @@ namespace ZespolServer.Controllers
                 zespolCluster = new ZespolCluster {Nazwa = Zespol.Nazwa};
                 await dbContext.ZespolClusters.AddAsync(zespolCluster);
                 await dbContext.SaveChangesAsync();
+                dbContext.Entry(zespolCluster).State = EntityState.Detached;
                 zespolCluster = await dbContext.ZespolClusters.FirstOrDefaultAsync(cluster => cluster.Nazwa == Zespol.Nazwa);
             }
+
+            await dbContext.SaveChangesAsync();
 
             zespolCluster.Zespol = Zespol;
             await dbContext.SaveChangesAsync();
